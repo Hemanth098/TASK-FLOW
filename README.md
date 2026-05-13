@@ -211,5 +211,4 @@ Tasks
 | POST | `/tasks/<id>/delete` | Delete task | Admin |
 
 ---
-7. **Dashboard** → show stats, overdue indicators, per-user breakdown
-8. **Board view** → Kanban columns
+
