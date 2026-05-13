@@ -157,35 +157,6 @@ git commit -m "Initial commit"
 git remote add origin https://github.com/your-username/task-manager.git
 git push -u origin main
 ```
-
-### Step 2 — Deploy on Railway
-1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
-2. Select your repository
-3. Railway auto-detects the `Procfile`
-
-### Step 3 — Add Environment Variables
-In Railway dashboard → **Variables**, add:
-```
-SECRET_KEY=your-random-secret-key-here
-JWT_SECRET_KEY=your-random-jwt-key-here
-FLASK_ENV=production
-DATABASE_URL=sqlite:///taskmanager.db
-```
-
-> **For PostgreSQL** (recommended for production):
-> - Add a PostgreSQL plugin in Railway
-> - Railway auto-sets `DATABASE_URL` with the `postgresql://` URL
-
-### Step 4 — Run Migrations
-In Railway → **Shell**:
-```bash
-flask db upgrade
-flask seed   # optional: load demo data
-```
-
-### Step 5 — Access Your App
-Railway provides a public URL like `https://your-app.up.railway.app`
-
 ---
 
 ## Database Schema
@@ -241,23 +212,3 @@ Tasks
 
 ---
 
-## Development Notes
-
-- **WTF CSRF**: Enabled in production, forms use `{{ form.hidden_tag() }}` pattern via meta tags
-- **Password hashing**: bcrypt with Flask-Bcrypt
-- **Overdue detection**: Computed property on `Task` model using timezone-aware comparison
-- **Role enforcement**: Checked at route level, not just template level (403 on unauthorized access)
-- **Database migrations**: Flask-Migrate (Alembic) for schema versioning
-
----
-
-## Demo Video Script (2–5 min)
-
-1. **Show signup** → create two users (admin + member)
-2. **Create project** → assign color, describe it
-3. **Add member** → add the second user as Member
-4. **Create tasks** → show priorities, due dates, assignments
-5. **Member POV** → log in as Member, show restricted access
-6. **Update status** → Member marks task In Progress → Done
-7. **Dashboard** → show stats, overdue indicators, per-user breakdown
-8. **Board view** → Kanban columns
