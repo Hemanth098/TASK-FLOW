@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — TaskFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0d0f14; --surface: #141720; --surface2: #1c2030; --border: #252a3a; --border2: #2e3550;
+            --accent: #7c6af7; --accent2: #a78bfa; --accent-glow: rgba(124,106,247,0.15);
+            --text: #e8eaf0; --text-muted: #6b7394; --text-dim: #3d4460;
+            --danger: #ef4444; --radius: 10px;
+        }
+        body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+        .auth-layout { display: flex; width: 100%; min-height: 100vh; }
+        .auth-side {
+            flex: 1; background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; justify-content: center; padding: 4rem;
+            position: relative; overflow: hidden;
+        }
+        .auth-side::before {
+            content: '';
+            position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(ellipse at 60% 40%, rgba(124,106,247,0.12) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .auth-logo { font-family: 'Space Mono', monospace; font-size: 1.5rem; color: var(--accent2); margin-bottom: 3rem; }
+        .auth-logo span { color: var(--text-muted); }
+        .auth-headline { font-family: 'Space Mono', monospace; font-size: 2.5rem; font-weight: 700; line-height: 1.2; color: var(--text); margin-bottom: 1rem; }
+        .auth-headline em { color: var(--accent2); font-style: normal; }
+        .auth-desc { color: var(--text-muted); font-size: 1rem; line-height: 1.6; max-width: 380px; }
+        .features { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 2.5rem; }
+        .feature { display: flex; align-items: center; gap: 0.75rem; color: var(--text-muted); font-size: 0.875rem; }
+        .feature-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); }
+        .auth-form-side { width: 440px; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+        .auth-form-wrapper { width: 100%; max-width: 360px; }
+        .auth-form-title { font-family: 'Space Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+        .auth-form-sub { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 2rem; }
+        .form-group { margin-bottom: 1.1rem; }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.4rem; }
+        .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 0.7rem 1rem; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; transition: all 0.15s; }
+        .form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .form-control::placeholder { color: var(--text-dim); }
+        .btn-primary { display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%; padding: 0.75rem; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-top: 0.5rem; }
+        .btn-primary:hover { background: #6a58e6; }
+        .auth-switch { text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: var(--text-muted); }
+        .auth-switch a { color: var(--accent2); text-decoration: none; font-weight: 500; }
+        .auth-switch a:hover { text-decoration: underline; }
+        .remember-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0; }
+        .remember-row input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+        .remember-row label { font-size: 0.875rem; color: var(--text-muted); cursor: pointer; }
+        .flash { padding: 0.65rem 1rem; border-radius: 8px; font-size: 0.825rem; margin-bottom: 0.5rem; border: 1px solid; }
+        .flash-error { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.3); color: #f87171; }
+        @media (max-width: 768px) {
+            .auth-side { display: none; }
+            .auth-form-side { width: 100%; padding: 2rem 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="auth-layout">
+    <div class="auth-side">
+        <div class="auth-logo">task<span>//</span>flow</div>
+        <div class="auth-headline">Manage tasks,<br><em>ship faster.</em></div>
+        <p class="auth-desc">A collaborative task manager for modern teams. Organize projects, assign work, and track progress in real time.</p>
+        <div class="features">
+            <div class="feature"><div class="feature-dot"></div>Role-based access (Admin & Member)</div>
+            <div class="feature"><div class="feature-dot"></div>Project-level task management</div>
+            <div class="feature"><div class="feature-dot"></div>Priority & due-date tracking</div>
+            <div class="feature"><div class="feature-dot"></div>Real-time dashboard analytics</div>
+        </div>
+    </div>
+    <div class="auth-form-side">
+        <div class="auth-form-wrapper">
+            <div class="auth-form-title">Welcome back</div>
+            <div class="auth-form-sub">Sign in to your account to continue</div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for cat, msg in messages %}
+                <div class="flash flash-{{ cat }}">{{ msg }}</div>
+                {% endfor %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="form-group">
+                    <label class="form-label" for="email">Email address</label>
+                    <input class="form-control" type="email" id="email" name="email" placeholder="you@company.com" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input class="form-control" type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                <div class="remember-row">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">Keep me signed in</label>
+                </div>
+                <button type="submit" class="btn-primary">Sign in →</button>
+            </form>
+
+            <div class="auth-switch">
+                Don't have an account? <a href="{{ url_for('auth.signup') }}">Create one</a>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

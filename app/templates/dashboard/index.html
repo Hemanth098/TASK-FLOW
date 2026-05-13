@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block extra_css %}
+<style>
+.task-item-dash {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+    margin-bottom: 0.5rem;
+}
+.task-item-dash:hover { border-color: var(--border2); background: var(--surface2); }
+.task-item-dash.overdue { border-left: 3px solid var(--danger); }
+
+.project-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: all 0.15s;
+}
+.project-chip:hover { border-color: var(--border2); transform: translateY(-2px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Good to see you, {{ current_user.name }} 👋</div>
+    </div>
+    <a href="{{ url_for('projects.create') }}" class="btn btn-primary">+ New Project</a>
+</div>
+
+<!-- Stats Row -->
+<div class="grid-4" style="margin-bottom:2rem">
+    <div class="stat-card" style="border-top:3px solid var(--text-dim)">
+        <div class="stat-label">Total Tasks</div>
+        <div class="stat-value">{{ total_tasks }}</div>
+        <div class="stat-sub">across {{ projects|length }} project{{ 's' if projects|length != 1 }}</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--in-progress)">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value">{{ in_progress_tasks|length }}</div>
+        <div class="stat-sub">{{ todo_tasks|length }} still to do</div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--done)">
+        <div class="stat-label">Completed</div>
+        <div class="stat-value">{{ done_tasks|length }}</div>
+        <div class="stat-sub">
+            {% if total_tasks > 0 %}{{ ((done_tasks|length / total_tasks) * 100)|round|int }}% completion rate{% else %}no tasks yet{% endif %}
+        </div>
+    </div>
+    <div class="stat-card" style="border-top:3px solid var(--danger)">
+        <div class="stat-label">Overdue</div>
+        <div class="stat-value" style="color:{% if overdue_tasks %}var(--danger){% else %}var(--text){% endif %}">{{ overdue_tasks|length }}</div>
+        <div class="stat-sub">{% if overdue_tasks %}needs attention{% else %}all on track!{% endif %}</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start">
+    <!-- Main content -->
+    <div>
+        <!-- Overdue tasks alert -->
+        {% if overdue_tasks %}
+        <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius-lg);padding:1.1rem 1.25rem;margin-bottom:1.5rem">
+            <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--danger);margin-bottom:0.75rem">⚠ Overdue Tasks</div>
+            {% for task in overdue_tasks[:3] %}
+            <a href="{{ url_for('tasks.edit', task_id=task.id) }}" class="task-item-dash overdue">
+                <div style="flex:1">
+                    <div class="task-title-text">{{ task.title }}</div>
+                    <div class="task-meta">{{ task.project.name }} · Due {{ task.due_date.strftime('%b %d') }}</div>
+                </div>
+                <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+            </a>
+            {% endfor %}
+            {% if overdue_tasks|length > 3 %}
+            <div style="font-size:0.8rem;color:var(--danger);margin-top:0.5rem">+{{ overdue_tasks|length - 3 }} more overdue</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Recent Tasks -->
+        <div class="section-title">Recent Tasks</div>
+        {% if recent_tasks %}
+            {% for task in recent_tasks %}
+            <a href="{{ url_for('tasks.edit', task_id=task.id) }}" class="task-item-dash{% if task.is_overdue %} overdue{% endif %}">
+                <div class="color-dot" style="background:{{ task.project.color }}"></div>
+                <div style="flex:1">
+                    <div class="task-title-text">{{ task.title }}</div>
+                    <div class="task-meta">{{ task.project.name }}{% if task.assignee %} · {{ task.assignee.name }}{% endif %}{% if task.due_date %} · Due {{ task.due_date.strftime('%b %d') }}{% endif %}</div>
+                </div>
+                <span class="badge badge-{{ task.status }}">{{ task.status.replace('_', ' ') }}</span>
+                <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+            </a>
+            {% endfor %}
+        {% else %}
+        <div class="card">
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <div class="empty-title">No tasks yet</div>
+                <div class="empty-desc">Create a project and add tasks to get started</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div style="display:flex;flex-direction:column;gap:1.25rem">
+        <!-- Projects -->
+         <div class="card" style="margin-bottom: 2rem;">
+    <div class="section-title">Task Distribution</div>
+    <div style="height: 300px;">
+        <canvas id="taskChart"></canvas>
+    </div>
+</div>
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('taskChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['To Do', 'In Progress', 'Done'],
+            datasets: [{
+                data: [{{ todo_tasks|length }}, {{ in_progress_tasks|length }}, {{ done_tasks|length }}],
+                backgroundColor: ['#6b7394', '#7c6af7', '#22c55e'],
+                borderColor: '#141720',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#e8eaf0', font: { family: 'DM Sans' } } }
+            }
+        }
+    });
+</script>
+{% endblock %}
+        <div class="card">
+            <div class="section-title" style="margin-bottom:0.85rem">Your Projects</div>
+            {% if projects %}
+                {% for p in project_stats %}
+                <a href="{{ url_for('projects.detail', project_id=p.project.id) }}" class="project-chip" style="margin-bottom:0.6rem">
+                    <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.5rem">
+                        <div class="color-dot" style="background:{{ p.project.color }}"></div>
+                        <span style="font-weight:500;font-size:0.875rem">{{ p.project.name }}</span>
+                        <span style="margin-left:auto;font-size:0.75rem;color:var(--text-muted)">{{ p.total }} task{{ 's' if p.total != 1 }}</span>
+                    </div>
+                    {% if p.total > 0 %}
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width:{{ ((p.done / p.total) * 100)|round|int }}%;background:{{ p.project.color }}"></div>
+                    </div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            {% else %}
+            <div style="text-align:center;padding:1rem 0;color:var(--text-muted);font-size:0.875rem">No projects yet</div>
+            {% endif %}
+            <a href="{{ url_for('projects.create') }}" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:0.5rem">+ New Project</a>
+        </div>
+
+        <!-- Tasks by user -->
+        {% if tasks_per_user %}
+        <div class="card">
+            <div class="section-title" style="margin-bottom:1rem">Tasks per Member</div>
+            {% for name, count in tasks_per_user.items() %}
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.6rem">
+                <div class="avatar" style="width:28px;height:28px;font-size:0.65rem;background:var(--accent)">{{ name[0].upper() }}</div>
+                <span style="font-size:0.875rem;flex:1">{{ name }}</span>
+                <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-muted)">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

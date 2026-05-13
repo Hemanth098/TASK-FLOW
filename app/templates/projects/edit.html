@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Edit {{ project.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="page-title">Edit Project</div>
+        <div class="page-subtitle">{{ project.name }}</div>
+    </div>
+    <a href="{{ url_for('projects.detail', project_id=project.id) }}" class="btn btn-ghost">← Back</a>
+</div>
+
+<div style="max-width:520px">
+    <div class="card">
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-label">Project Name *</label>
+                <input class="form-control" type="text" name="name" value="{{ project.name }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" name="description">{{ project.description or '' }}</textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Project Color</label>
+                <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:0.5rem" id="color-picker">
+                    {% for color in colors %}
+                    <label style="cursor:pointer">
+                        <input type="radio" name="color" value="{{ color }}" {% if color == project.color %}checked{% endif %} style="display:none">
+                        <div class="color-swatch" style="width:32px;height:32px;border-radius:50%;background:{{ color }};transition:all 0.15s{% if color == project.color %};outline:3px solid white;outline-offset:2px{% endif %}" data-color="{{ color }}"></div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-top:1.5rem">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ url_for('projects.detail', project_id=project.id) }}" class="btn btn-ghost">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.querySelectorAll('#color-picker input[type=radio]').forEach(radio => {
+    radio.addEventListener('change', () => {
+        document.querySelectorAll('.color-swatch').forEach(s => { s.style.outline='none'; });
+        radio.nextElementSibling.style.outline = '3px solid white';
+        radio.nextElementSibling.style.outlineOffset = '2px';
+    });
+});
+</script>
+{% endblock %}

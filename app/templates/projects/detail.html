@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block extra_css %}
+<style>
+.task-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.15s;
+}
+.task-row:hover { border-color: var(--border2); background: var(--surface2); }
+.task-row.overdue { border-left: 3px solid var(--danger); }
+
+.kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.kanban-col { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+.kanban-header { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.85rem; display:flex; align-items:center; gap:0.5rem; }
+.kanban-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; margin-bottom: 0.5rem; }
+.member-row { display:flex; align-items:center; gap:0.75rem; padding:0.65rem 0; border-bottom:1px solid var(--border); }
+.member-row:last-child { border-bottom: none; }
+.tab-row { display:flex; gap:0.25rem; margin-bottom:1.5rem; border-bottom:1px solid var(--border); padding-bottom:0; }
+.tab-btn { padding:0.55rem 1rem; font-size:0.875rem; font-weight:500; color:var(--text-muted); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; font-family:var(--font); }
+.tab-btn.active { color:var(--accent2); border-bottom-color:var(--accent2); }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div style="display:flex;align-items:center;gap:1rem">
+        <div style="width:16px;height:16px;border-radius:4px;background:{{ project.color }};flex-shrink:0"></div>
+        <div>
+            <div class="page-title">{{ project.name }}</div>
+            {% if project.description %}
+            <div class="page-subtitle">{{ project.description }}</div>
+            {% endif %}
+        </div>
+        <span class="badge badge-{{ user_role }}" style="margin-left:0.5rem">{{ user_role }}</span>
+    </div>
+    <div style="display:flex;gap:0.75rem">
+        {% if user_role == 'admin' %}
+        <a href="{{ url_for('tasks.create', project_id=project.id) }}" class="btn btn-primary">+ Add Task</a>
+        <a href="{{ url_for('projects.edit', project_id=project.id) }}" class="btn btn-ghost">Edit Project</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="grid-4" style="margin-bottom:1.75rem">
+    <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value">{{ stats.total }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">To Do</div>
+        <div class="stat-value" style="color:var(--text-muted)">{{ stats.todo }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" style="color:var(--accent2)">{{ stats.in_progress }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Done</div>
+        <div class="stat-value" style="color:var(--success)">{{ stats.done }}</div>
+    </div>
+</div>
+
+<div class="tab-row">
+    <button class="tab-btn active" onclick="switchTab('list', this)">List View</button>
+    <button class="tab-btn" onclick="switchTab('board', this)">Board View</button>
+    <button class="tab-btn" onclick="switchTab('members', this)">Members ({{ members_with_roles|length }})</button>
+    {% if user_role == 'admin' %}<button class="tab-btn" onclick="switchTab('settings', this)">Settings</button>{% endif %}
+</div>
+
+<!-- List View -->
+<div id="tab-list" class="tab-panel active">
+    {% if tasks %}
+        {% for task in tasks %}
+        <div class="task-row{% if task.is_overdue %} overdue{% endif %}">
+            <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:0.65rem">
+                    <span style="font-weight:500;font-size:0.9rem">{{ task.title }}</span>
+                    {% if task.is_overdue %}<span class="badge badge-overdue">Overdue</span>{% endif %}
+                </div>
+                <div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem">
+                    {% if task.assignee %}Assigned to {{ task.assignee.name }}{% else %}Unassigned{% endif %}
+                    {% if task.due_date %} · Due {{ task.due_date.strftime('%b %d, %Y') }}{% endif %}
+                </div>
+            </div>
+            <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+            <span class="badge badge-{{ task.status }}">{{ task.status.replace('_',' ') }}</span>
+            <div style="display:flex;gap:0.4rem">
+                <a href="{{ url_for('tasks.edit', task_id=task.id) }}" class="btn btn-ghost btn-sm">Edit</a>
+                {% if user_role == 'admin' %}
+                <form method="POST" action="{{ url_for('tasks.delete', task_id=task.id) }}" onsubmit="return confirm('Delete this task?')">
+                    <button type="submit" class="btn btn-danger btn-sm">✕</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="card"><div class="empty-state"><div class="empty-icon">✅</div>
+        <div class="empty-title">No tasks{% if user_role != 'admin' %} assigned to you{% endif %}</div>
+        {% if user_role == 'admin' %}<a href="{{ url_for('tasks.create', project_id=project.id) }}" class="btn btn-primary" style="margin-top:1rem">+ Create Task</a>{% endif %}
+    </div></div>
+    {% endif %}
+</div>
+
+<!-- Board View -->
+<div id="tab-board" class="tab-panel">
+    <div class="kanban">
+        {% set todo_tasks = tasks | selectattr('status', 'equalto', 'todo') | list %}
+        {% set ip_tasks = tasks | selectattr('status', 'equalto', 'in_progress') | list %}
+        {% set done_tasks = tasks | selectattr('status', 'equalto', 'done') | list %}
+
+        <div class="kanban-col">
+            <div class="kanban-header"><span style="color:var(--text-muted)">●</span> To Do <span style="margin-left:auto;background:var(--border);padding:0.1rem 0.5rem;border-radius:999px;font-size:0.7rem">{{ todo_tasks|length }}</span></div>
+            {% for task in todo_tasks %}
+            <div class="kanban-card">
+                <div style="font-weight:500;font-size:0.875rem;margin-bottom:0.4rem">{{ task.title }}</div>
+                <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                    <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+                    {% if task.assignee %}<span style="font-size:0.72rem;color:var(--text-muted)">{{ task.assignee.name }}</span>{% endif %}
+                </div>
+                {% if task.due_date %}<div style="font-size:0.72rem;color:{% if task.is_overdue %}var(--danger){% else %}var(--text-muted){% endif %};margin-top:0.4rem">Due {{ task.due_date.strftime('%b %d') }}</div>{% endif %}
+                <a href="{{ url_for('tasks.edit', task_id=task.id) }}" style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--accent2);text-decoration:none">Edit →</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="kanban-col">
+            <div class="kanban-header"><span style="color:var(--accent2)">●</span> In Progress <span style="margin-left:auto;background:var(--border);padding:0.1rem 0.5rem;border-radius:999px;font-size:0.7rem">{{ ip_tasks|length }}</span></div>
+            {% for task in ip_tasks %}
+            <div class="kanban-card">
+                <div style="font-weight:500;font-size:0.875rem;margin-bottom:0.4rem">{{ task.title }}</div>
+                <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
+                    <span class="badge badge-{{ task.priority }}">{{ task.priority }}</span>
+                    {% if task.assignee %}<span style="font-size:0.72rem;color:var(--text-muted)">{{ task.assignee.name }}</span>{% endif %}
+                </div>
+                {% if task.due_date %}<div style="font-size:0.72rem;color:{% if task.is_overdue %}var(--danger){% else %}var(--text-muted){% endif %};margin-top:0.4rem">Due {{ task.due_date.strftime('%b %d') }}</div>{% endif %}
+                <a href="{{ url_for('tasks.edit', task_id=task.id) }}" style="display:block;margin-top:0.5rem;font-size:0.75rem;color:var(--accent2);text-decoration:none">Edit →</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="kanban-col">
+            <div class="kanban-header"><span style="color:var(--success)">●</span> Done <span style="margin-left:auto;background:var(--border);padding:0.1rem 0.5rem;border-radius:999px;font-size:0.7rem">{{ done_tasks|length }}</span></div>
+            {% for task in done_tasks %}
+            <div class="kanban-card" style="opacity:0.7">
+                <div style="font-weight:500;font-size:0.875rem;margin-bottom:0.4rem;text-decoration:line-through;color:var(--text-muted)">{{ task.title }}</div>
+                {% if task.assignee %}<span style="font-size:0.72rem;color:var(--text-muted)">{{ task.assignee.name }}</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Members Tab -->
+<div id="tab-members" class="tab-panel">
+    <div style="max-width:560px">
+        <div class="card" style="margin-bottom:1.25rem">
+            {% for user, role in members_with_roles %}
+            <div class="member-row">
+                <div class="avatar" style="background:{{ user.avatar_color }}">{{ user.name[0].upper() }}</div>
+                <div style="flex:1">
+                    <div style="font-weight:500;font-size:0.875rem">{{ user.name }}</div>
+                    <div style="font-size:0.78rem;color:var(--text-muted)">{{ user.email }}</div>
+                </div>
+                <span class="badge badge-{{ role }}">{{ role }}</span>
+                {% if user_role == 'admin' and user.id != project.owner_id %}
+                <div style="display:flex;gap:0.4rem">
+                    <form method="POST" action="{{ url_for('projects.update_role', project_id=project.id, user_id=user.id) }}" style="display:inline">
+                        <select name="role" onchange="this.form.submit()" style="background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:0.75rem;padding:0.2rem 0.4rem;cursor:pointer">
+                            <option value="member" {% if role=='member' %}selected{% endif %}>Member</option>
+                            <option value="admin" {% if role=='admin' %}selected{% endif %}>Admin</option>
+                        </select>
+                    </form>
+                    <form method="POST" action="{{ url_for('projects.remove_member', project_id=project.id, user_id=user.id) }}" onsubmit="return confirm('Remove this member?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if user_role == 'admin' %}
+        <div class="card">
+            <div class="section-title" style="margin-bottom:1rem">Add Member</div>
+            <form method="POST" action="{{ url_for('projects.add_member', project_id=project.id) }}">
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input class="form-control" type="email" name="email" placeholder="colleague@company.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select class="form-control" name="role">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Member</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Settings Tab -->
+{% if user_role == 'admin' %}
+<div id="tab-settings" class="tab-panel">
+    <div style="max-width:480px">
+        <div class="card">
+            <div class="section-title" style="margin-bottom:1.5rem">Danger Zone</div>
+            <p style="font-size:0.875rem;color:var(--text-muted);margin-bottom:1rem">Deleting this project will permanently remove all tasks and cannot be undone.</p>
+            {% if project.owner_id == current_user.id %}
+            <form method="POST" action="{{ url_for('projects.delete', project_id=project.id) }}" onsubmit="return confirm('DELETE project and all tasks? This CANNOT be undone.')">
+                <button type="submit" class="btn btn-danger">Delete Project</button>
+            </form>
+            {% else %}
+            <p style="font-size:0.8rem;color:var(--text-muted)">Only the project owner can delete it.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+</script>
+{% endblock %}
